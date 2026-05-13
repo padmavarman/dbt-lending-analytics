@@ -1,0 +1,13 @@
+lending_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: <your_snowflake_account>   # e.g. abc12345.us-east-1
+      user: dbt
+      password: <your_password>
+      role: TRANSFORM
+      database: LENDING_ANALYTICS
+      warehouse: COMPUTE_WH
+      schema: RAW
+      threads: 4

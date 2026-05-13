@@ -1,0 +1,31 @@
+version: 2
+
+sources:
+  - name: raw
+    database: LENDING_ANALYTICS
+    schema: RAW
+    tables:
+      - name: raw_loans
+        description: "Raw loan application and performance data from Lending Club"
+        columns:
+          - name: loan_id
+            description: "Unique loan identifier"
+            tests:
+              - unique
+              - not_null
+      - name: raw_payments
+        description: "Payment transaction history for each loan"
+        columns:
+          - name: payment_id
+            description: "Unique payment identifier"
+            tests:
+              - unique
+              - not_null
+      - name: raw_customers
+        description: "Customer demographic and credit profile data"
+        columns:
+          - name: member_id
+            description: "Unique customer identifier"
+            tests:
+              - unique
+              - not_null

@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  # -- Staging --
+  - name: stg_loans
+    description: "Cleaned and standardized loan data with business status classification"
+    columns:
+      - name: loan_id
+        tests:
+          - unique
+          - not_null
+      - name: loan_status_category
+        tests:
+          - accepted_values:
+              values: ['PERFORMING', 'WATCH', 'DELINQUENT', 'DEFAULT', 'CHARGED_OFF', 'OTHER']
+
+  - name: stg_payments
+    description: "Cleaned payment transaction data with payment classification"
+    columns:
+      - name: payment_id
+        tests:
+          - unique
+          - not_null
+      - name: payment_classification
+        tests:
+          - accepted_values:
+              values: ['ON_TIME', 'LATE', 'MISSED']
+
+  - name: stg_customers
+    description: "Cleaned customer data with income tier segmentation"
+    columns:
+      - name: member_id
+        tests:
+          - unique
+          - not_null
+      - name: income_tier
+        tests:
+          - accepted_values:
+              values: ['LOW', 'LOWER_MIDDLE', 'UPPER_MIDDLE', 'HIGH', 'ULTRA_HIGH', 'UNKNOWN']
+
+  # -- Dimensions --
+  - name: dim_borrowers
+    description: "Enriched borrower profiles with risk scoring and lifetime metrics"
+    columns:
+      - name: member_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_loan_products
+    description: "Product classification dimension for penetration analysis"
+    columns:
+      - name: product_key
+        tests:
+          - unique
+          - not_null
+
+  # -- Facts --
+  - name: fct_loan_originations
+    description: "Loan-level fact table with financial performance and default indicators"
+    columns:
+      - name: loan_id
+        tests:
+          - unique
+          - not_null
+      - name: loan_amount
+        tests:
+          - not_null
+
+  # -- Marts --
+  - name: mart_product_penetration
+    description: "Product penetration rates across customer segments and geographies"
+
+  - name: mart_default_analysis
+    description: "Default risk analysis with alert levels for proactive intervention"
+
+  - name: mart_portfolio_performance
+    description: "Monthly cohort analysis with vintage performance and MoM growth"
+
+  - name: mart_customer_segmentation
+    description: "RFM-based customer segmentation with sales actions and RM priority flags"
