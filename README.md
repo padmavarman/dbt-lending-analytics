@@ -1,195 +1,65 @@
-# 🏦 Lending Portfolio Analytics — dbt + Snowflake Data Pipeline
+# Lending Portfolio Analytics — dbt + Snowflake
 
-An end-to-end analytics engineering project that transforms raw lending data into actionable business intelligence using **dbt (Data Build Tool)** and **Snowflake**. The pipeline ingests loan origination, payment, and customer data, then models it through a staging → dimension → fact → mart architecture to power product penetration analysis, credit risk segmentation, portfolio performance tracking, and sales intelligence.
+A data pipeline that takes messy lending data and turns it into something a business team can actually use. Built with dbt and Snowflake.
 
----
+The idea is simple: raw loan data goes in, and clean tables come out that answer questions like "where are we underselling?", "where's the risk?", and "who should sales call first?"
 
-## 📌 Business Problem
+## What it does
 
-Financial institutions need to answer critical questions to drive growth and manage risk:
+Raw data (loans, payments, customers) flows through four layers:
 
-- **Product Penetration:** Which loan products are underpenetrated in which customer segments and regions?
-- **Credit Risk:** Which borrower cohorts have elevated default rates, and how early can we flag them?
-- **Portfolio Health:** How are origination volumes, net yield, and default rates trending month-over-month?
-- **Sales Intelligence:** Which customers should relationship managers prioritize for cross-sell, reactivation, or risk management?
+- **Staging** — cleans up the data, standardizes fields, classifies loan statuses
+- **Dimensions** — borrower profiles with risk scores, product classifications, geography, dates
+- **Facts** — one row per loan with net revenue, loss amounts, default flags (incremental)
+- **Marts** — the business-facing tables:
+  - `mart_product_penetration` — which products are undersold in which segments
+  - `mart_default_analysis` — flags high-risk cohorts as CRITICAL/HIGH/ELEVATED
+  - `mart_portfolio_performance` — monthly trends, MoM growth, vintage analysis
+  - `mart_customer_segmentation` — RFM scoring with actions like CROSS_SELL, REACTIVATION, RISK_MANAGEMENT
 
-This project builds the data infrastructure to answer all four — transforming raw transactional data into analytics-ready marts.
-
----
-
-## 🏗️ Architecture
-
-```
-                    ┌──────────────┐
-                    │   S3 Bucket  │  (Raw CSVs)
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │  Snowflake   │  (Raw Schema)
-                    │  raw_loans   │
-                    │  raw_payments│
-                    │  raw_customers│
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │   STAGING    │  (Views — clean, standardize, classify)
-                    │  stg_loans   │
-                    │  stg_payments│
-                    │  stg_customers│
-                    └──────┬───────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-       ┌──────▼─────┐ ┌───▼────┐ ┌─────▼──────┐
-       │ DIMENSIONS │ │ FACTS  │ │   MARTS    │
-       │dim_borrowers│ │fct_loan│ │mart_product│
-       │dim_products │ │fct_pay │ │mart_default│
-       │dim_dates    │ │        │ │mart_portfo │
-       │dim_geography│ │        │ │mart_cust   │
-       └─────────────┘ └────────┘ └────────────┘
-```
-
-**Tech Stack:** dbt Core · Snowflake · SQL · S3 · dbt_utils
-
----
-
-## 📂 Project Structure
+## Project structure
 
 ```
-dbt-lending-analytics/
-├── models/
-│   ├── staging/              # Views — data cleaning & standardization
-│   │   ├── src_lending.yml   # Source definitions with tests
-│   │   ├── stg_loans.sql     # Loan status classification, term parsing
-│   │   ├── stg_payments.sql  # Payment behavior classification
-│   │   └── stg_customers.sql # Income tier segmentation
-│   ├── dim/                  # Dimension tables
-│   │   ├── dim_borrowers.sql # Risk scoring, CLV proxy, loan history
-│   │   ├── dim_loan_products.sql # Product tier & purpose grouping
-│   │   ├── dim_dates.sql     # Date spine with fiscal quarters
-│   │   └── dim_geography.sql # Regional market segmentation
-│   ├── fct/                  # Fact tables (incremental)
-│   │   ├── fct_loan_originations.sql # Net revenue, loss, default flags
-│   │   └── fct_payments.sql  # Payment transaction events
-│   ├── mart/                 # Business-facing analytics layers
-│   │   ├── mart_product_penetration.sql  # Penetration rates by segment
-│   │   ├── mart_default_analysis.sql     # Risk alerts by cohort
-│   │   ├── mart_portfolio_performance.sql # Monthly vintage analysis
-│   │   └── mart_customer_segmentation.sql # RFM scoring & sales actions
-│   └── schema.yml            # Model documentation & tests
-├── macros/
-│   └── calculate_net_revenue.sql
-├── tests/
-│   └── assert_no_negative_loan_amounts.sql
-├── snowflake_setup.sql       # Snowflake environment bootstrap
-├── dbt_project.yml           # dbt configuration
-├── packages.yml              # dbt_utils dependency
-├── profiles.yml.example      # Connection template (DO NOT commit real creds)
-└── README.md
+models/
+  staging/       stg_loans, stg_payments, stg_customers
+  dim/           dim_borrowers, dim_loan_products, dim_dates, dim_geography
+  fct/           fct_loan_originations, fct_payments
+  mart/          mart_product_penetration, mart_default_analysis,
+                 mart_portfolio_performance, mart_customer_segmentation
+macros/          calculate_net_revenue.sql
+tests/           assert_no_negative_loan_amounts.sql
 ```
 
----
+## Tech
 
-## 🔑 Key Models Explained
+dbt Core, Snowflake, SQL, dbt_utils, S3
 
-### Staging Layer (Views)
-| Model | What it does |
-|---|---|
-| `stg_loans` | Parses term strings to integers, classifies loan status into business categories (PERFORMING, WATCH, DELINQUENT, DEFAULT, CHARGED_OFF), standardizes text fields |
-| `stg_payments` | Classifies payments as ON_TIME, LATE, or MISSED based on late fee presence |
-| `stg_customers` | Segments customers into income tiers (LOW → ULTRA_HIGH), standardizes employment and ownership fields |
+## How to run
 
-### Dimension Layer (Tables)
-| Model | What it does |
-|---|---|
-| `dim_borrowers` | Enriches customer profiles with loan history aggregates, risk classification (LOW/MEDIUM/HIGH), and estimated lifetime interest |
-| `dim_loan_products` | Classifies products by tier (PRIME/NEAR_PRIME/SUBPRIME), term, and purpose group (DEBT_MANAGEMENT, HOUSING, etc.) |
-| `dim_dates` | Date spine from 2007–2025 with fiscal quarters, week numbers, weekend flags |
-| `dim_geography` | Maps states to regions (WEST, SOUTH, NORTHEAST, MIDWEST, MOUNTAIN) |
+1. Clone the repo
+2. Run `snowflake_setup.sql` in your Snowflake console
+3. Download the [Lending Club dataset from Kaggle](https://www.kaggle.com/datasets/wordsforthewise/lending-club) and load it into the raw tables
+4. Set up your `profiles.yml` (there's an example file in the repo)
+5. Then:
 
-### Fact Layer (Incremental)
-| Model | What it does |
-|---|---|
-| `fct_loan_originations` | Core transaction table — one row per loan with derived net revenue, loss amount, and default flags. Uses incremental merge strategy. |
-| `fct_payments` | Payment-level events with classification. Incremental merge on payment_id. |
-
-### Mart Layer (Tables)
-| Model | Business Question |
-|---|---|
-| `mart_product_penetration` | Which products are underpenetrated in which segments? Calculates penetration rates and profitability rankings per income tier and state. |
-| `mart_default_analysis` | Where is risk concentrated? Flags CRITICAL/HIGH/ELEVATED segments based on default rate thresholds and exposure. |
-| `mart_portfolio_performance` | How is the book trending? Monthly cohort analysis with MoM growth, net yield, and vintage default rates. |
-| `mart_customer_segmentation` | Who should sales prioritize? RFM-inspired scoring with actionable segments: HIGH_VALUE_CROSS_SELL, REACTIVATION_TARGET, RISK_MANAGEMENT. |
-
----
-
-## 🚀 Setup & Run
-
-### Prerequisites
-- Python 3.8+
-- Snowflake account
-- dbt-core + dbt-snowflake
-
-### Step 1: Clone & Install
 ```bash
-git clone https://github.com/<your-username>/dbt-lending-analytics.git
-cd dbt-lending-analytics
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install dbt-snowflake==1.9.0
+dbt deps
+dbt run
+dbt test
 ```
 
-### Step 2: Snowflake Setup
-Run `snowflake_setup.sql` in your Snowflake console as ACCOUNTADMIN.
+`dbt docs generate && dbt docs serve` if you want to browse the documentation locally.
 
-### Step 3: Configure Connection
-```bash
-# Copy the example profile
-cp profiles.yml.example ~/.dbt/profiles.yml
-# Edit with your Snowflake account details
-```
+## Tests
 
-### Step 4: Load Data
-Download the [Lending Club dataset from Kaggle](https://www.kaggle.com/datasets/wordsforthewise/lending-club) and load into the raw tables via Snowflake UI or S3 stage.
+Schema tests on all key columns (unique, not_null, accepted_values). One custom test that checks for negative loan amounts. Source freshness configured on all raw tables.
 
-### Step 5: Run dbt
-```bash
-dbt deps          # Install dbt_utils
-dbt debug         # Verify connection
-dbt run           # Build all models
-dbt test          # Run data quality tests
-dbt docs generate # Generate documentation
-dbt docs serve    # View docs in browser
-```
+## Sample questions this answers
 
----
+- Debt consolidation loans have 2.3x higher penetration in the Northeast vs the South — worth expanding there
+- Grade E loans with high DTI in the Mountain region are defaulting at 22% — needs a closer look
+- 847 customers scored as high-value cross-sell targets have only ever used one product
 
-## 🧪 Testing
+## Data
 
-The project includes both schema tests and custom data quality tests:
-
-- **Schema tests:** unique, not_null, accepted_values on all key columns
-- **Custom tests:** `assert_no_negative_loan_amounts` — ensures financial data integrity
-- **Source freshness:** Configured on all raw tables via `loaded_at` timestamps
-
-Run tests:
-```bash
-dbt test                    # All tests
-dbt test --select staging   # Staging only
-dbt test --select mart      # Mart only
-```
-
----
-
-## 📊 Sample Insights This Pipeline Enables
-
-1. **"Debt consolidation loans to UPPER_MIDDLE income borrowers in the NORTHEAST have 2.3x higher penetration than the SOUTH — expand marketing there."**
-2. **"Grade E loans with DTI > 25 in the MOUNTAIN region have a 22% default rate — flag as CRITICAL and tighten underwriting."**
-3. **"Q3 origination volume grew 8% MoM but net yield dropped 15bps — investigate pricing compression in PRIME products."**
-4. **"847 HIGH_VALUE_CROSS_SELL customers have only used debt consolidation — target for home improvement product outreach."**
-
----
-
-## 📄 License
-
-This project is for educational and portfolio purposes. Dataset sourced from [Lending Club via Kaggle](https://www.kaggle.com/datasets/wordsforthewise/lending-club).
+Lending Club dataset from Kaggle. This project is for learning and portfolio purposes.
